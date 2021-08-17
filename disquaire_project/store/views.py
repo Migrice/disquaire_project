@@ -1,0 +1,100 @@
+from django.core import paginator
+from django.shortcuts import render,get_object_or_404
+from django import template
+from django.http import HttpResponse
+from .models import Artist, Album ,Booking,Contact
+from django.template import loader
+from django.core.paginator import Paginator,PageNotAnInteger,EmptyPage
+from .forms import ContactForm
+
+
+def index(request):
+     #affiche les albums disponibles, par ordre de creation en allant du plus recent et seulement 8
+    albums=Album.objects.filter(available=True).order_by('-created_at')[:6]
+    #formatted_albums=["<li>{}</li>".format(album.title) for album in albums]
+    #message="""<ul>{}</ul>""".format("\n".join(formatted_albums))
+    #template = loader.get_template('store/base.html')
+    context={
+        'albums':albums
+    }
+    return render(request,'store/index.html',context)
+
+
+def listing(request):
+    albums_list=Album.objects.filter(available=True)# affiche tous les albums disponibles
+    paginator=Paginator(albums_list,10)# affiche 10 albums par page
+    page=request.GET.get('page')#recuper le numero de la page sur laquelle on est
+    
+    try:
+        albums=paginator.page(page)
+    except PageNotAnInteger:
+        albums=paginator.page(1) #afficher la premiere page
+    except EmptyPage:
+        albums=paginator.page(paginator.num_pages)
+    #formatted_albums=["<li>{}</li>".format(album.title) for album in albums]
+    #message="""<ul>{}</ul>""".format("\n".join(formatted_albums))
+    context={
+        'albums':albums
+    }
+    return render(request,'store/listing.html',context)
+
+
+def detail(request,album_id):
+
+    album=get_object_or_404(Album, pk=album_id)#recuperer les données d'un album a travers son id
+    artists_name =" ".join([artist.name for artist in album.artists.all()])
+    if request.method == 'POST':
+        email=request.POST.get('email')
+        name =request.POST.get('name')
+        
+
+    contact= Contact.objects.filter(email=email) #creation du contact   
+    if not contact.exists():
+        contact=Contact.objects.create(
+            email = email,
+            name = name
+        )
+    album=get_object_or_404(Album,id=album_id)
+
+    booking=Booking.objects.create(
+        contact=contact,
+        album=album
+    )
+    album.available=False
+    album.save()
+    context={
+        'album_title':album.title
+
+    }
+    return render(request,'store/merci.html',context)
+    
+    
+    context={
+        'album_title':album.title,
+        'artists_name':artists_name,
+        'album_id':album.id,
+        'thumbnail':album.picture,
+        'form':form
+        
+   }
+    print (context)
+    return render(request, 'store/detail.html', context)
+
+
+def search(request):
+    
+    query = request.GET.get('query')
+    if not query:
+        albums=Album.objects.all()#affiche tous les albums si rien n'est entré
+    else:
+        albums=Album.objects.filter(title__icontains=query) # recupere les titres sans tenir compte de la casse
+        if not albums.exists() :
+           albums=Album.objects.filter(artists__name__icontains=query)# rechercher un album a travers l'artiste
+        
+    title="Resultats pour la requete %s"%query
+    context={
+        'albums':albums,
+        'title':title
+    }        
+
+    return render(request, 'store/search.html',context)
