@@ -1,4 +1,4 @@
-from django.core import paginator
+from django.core import paginator # afficher un contenu sur plusieurs pages
 from django.shortcuts import render,get_object_or_404
 from django import template
 from django.http import HttpResponse
@@ -6,6 +6,7 @@ from .models import Artist, Album ,Booking,Contact
 from django.template import loader
 from django.core.paginator import Paginator,PageNotAnInteger,EmptyPage
 from .forms import ContactForm
+from django.db import transaction,IntegrityError
 
 
 def index(request):
@@ -40,43 +41,70 @@ def listing(request):
 
 
 def detail(request,album_id):
+    '''présent, utilisez la classe du formulaire pour générer
+     les champs automatiquement dans le gabarit. Commencez par créer une
+      instance de ContactForm() dans la vue puis utilisez-la dans le gabarit'''
 
     album=get_object_or_404(Album, pk=album_id)#recuperer les données d'un album a travers son id
     artists_name =" ".join([artist.name for artist in album.artists.all()])
-    if request.method == 'POST':
-        email=request.POST.get('email')
-        name =request.POST.get('name')
-        
-
-    contact= Contact.objects.filter(email=email) #creation du contact   
-    if not contact.exists():
-        contact=Contact.objects.create(
-            email = email,
-            name = name
-        )
-    album=get_object_or_404(Album,id=album_id)
-
-    booking=Booking.objects.create(
-        contact=contact,
-        album=album
-    )
-    album.available=False
-    album.save()
-    context={
-        'album_title':album.title
-
-    }
-    return render(request,'store/merci.html',context)
-    
-    
     context={
         'album_title':album.title,
         'artists_name':artists_name,
         'album_id':album.id,
-        'thumbnail':album.picture,
-        'form':form
+        'thumbnail':album.picture
+    }
+    if request.method == 'POST':
+        form=ContactForm( request.POST)
+        '''La méthode is_valid() convertit également les valeurs envoyées par l'utilisateur 
+        en objet Python. Par exemple, si vous demandez à l'utilisateur d'entrer un chiffre
+        et que cela figure dans la classe de formulaire, il sera disponible dans cleaned_data sous la forme d'un entier (int).'''
+        if form.is_valid():
+
+
+           # email=request.POST.get('email') #recuperation des données
+            email=form.cleaned_data['email']
+            name =form.cleaned_data['name']
+
+            try:
+
+                with transaction.atomic():
+
+                    contact= Contact.objects.filter(email=email) #creation du contact   
+                    if not contact.exists():
+
+                        # si le contact n'est pas enregistré il cree un nouveau
+                        contact=Contact.objects.create(
+                            email = email,
+                            name = name
+                        )
+                    else:
+                        contact=contact.first()
+
+                    album=get_object_or_404(Album,id=album_id)
+
+                    booking=Booking.objects.create(
+                        contact=contact,
+                        album=album
+                    )
+                
+                    album.available=False 
+                    album.save()
+                    context={
+                        'album_title':album.title
+
+                    }
+                    return render(request,'store/merci.html',context)
+            except IntegrityError:
+                form.errors['internal']="une erreur interne est apparue. Merci de recommencer votre requete"
+
+
         
-   }
+            
+    else:
+        form= ContactForm()
+    context['form']=form
+    context['errors']=form.errors.items()
+    
     print (context)
     return render(request, 'store/detail.html', context)
 
