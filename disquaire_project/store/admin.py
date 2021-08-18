@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Artist, Album, Contact, Booking
+from django.utils.safestring import mark_safe
 
 
 #admin.site.register(Album)
@@ -16,8 +17,7 @@ class BookingInline(admin.TabularInline): #tabularInligne permet d'afficher les 
     verbose_name="Reservation"
     verbose_name_plural='Reservations'
 
-    def has_add_permission(self,request): 
-        return False
+    
 
 class AlbumArtistInline(admin.TabularInline):
     model=Album.artists.through
@@ -46,5 +46,9 @@ class BookingAdmin(admin.ModelAdmin):
     readonly_fields=["created_at","contacted","contact","album",] # lecture seule
     list_filter=['created_at','contacted' ,]
 
-    def has_add_permission(self,request): # l'admin n'a pas le droit d'ajouter une reservation
-        return False
+    
+    
+    def album_link(self,booking):
+        url="/content"
+        return mark_safe("<a href='{}'>{}</a>".format(url, booking.album.title))
+        #la methode mark_safe indique que le contenu est du html, sans elle la balise 'a' serait consideree coe une chaine de caractere

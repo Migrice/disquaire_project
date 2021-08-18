@@ -240,6 +240,8 @@ footer p {
 }
 
 .img-responsive {
-    height: 133px !important;
+   /* height: 133px !important;*/
+    height: auto !important;
+    
 
 }

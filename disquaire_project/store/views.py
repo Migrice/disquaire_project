@@ -23,7 +23,7 @@ def index(request):
 
 def listing(request):
     albums_list=Album.objects.filter(available=True)# affiche tous les albums disponibles
-    paginator=Paginator(albums_list,10)# affiche 10 albums par page
+    paginator=Paginator(albums_list,9)# affiche 10 albums par page
     page=request.GET.get('page')#recuper le numero de la page sur laquelle on est
     
     try:
