@@ -63,7 +63,6 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
-
 ROOT_URLCONF = 'disquaire_project.urls'
 
 TEMPLATES = [
